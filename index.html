@@ -1081,8 +1081,14 @@
             }
             .output-fmt-bar::-webkit-scrollbar { display: none; }
             /* bloc-editor et ses items : min-width:0 pour rester dans le conteneur */
-            .bloc-editor { min-width: 0; }
+            .bloc-editor { min-width: 0; overflow-x: hidden; }
             .bloc-item   { min-width: 0; }
+            /* CAUSE DU DÉBORDEMENT : .bloc-rich-item a flex-shrink:0 dans le CSS base.
+               Sur mobile, on l'override à flex-shrink:1 pour qu'il puisse rétrécir. */
+            .bloc-rich-item { flex-shrink: 1 !important; min-width: 0; overflow-x: hidden; }
+            .bloc-rich-edit { min-width: 0; overflow-x: hidden; max-width: 100%; }
+            .bloc-text-edit { overflow-x: hidden; }
+            .bloc-add-row   { overflow-x: hidden; flex-wrap: wrap; }
             /* Rendu : pas de scroll horizontal (l'output-box est zoomé par JS) */
             .output-scroll-wrap {
                 overflow-x: hidden;
@@ -4985,6 +4991,49 @@ function _fixCanvasPageBreaks(doc, pageH, margin) {
     }
 }
 
+// ── Injecte de vrais <img> pour les référents avant capture html2canvas ──────────────────
+// html2canvas 1.x ne rend pas background-image:var(--ref-img) sur ::before.
+// On lit les data-URIs depuis les <style> inline, on injecte un <img> positionné
+// en absolu dans chaque .g-wrap.has-ref, et on désactive le ::before.
+function _injectRefImgsForCanvas(iDoc) {
+    // 1. Construire la map id → data-URI depuis les <style> du document
+    const refImgMap = {};
+    for (const st of iDoc.querySelectorAll('style')) {
+        // Cherche : [data-ref="id"]{ --ref-img: url('...') }
+        // et aussi : [data-ref="id"]{--ref-img:url('...')}  (buildStudentApiHtml)
+        const re = /\[data-ref="([^"]+)"\][^{]*\{[^}]*--ref-img:\s*url\('([^']+)'\)/g;
+        let m;
+        while ((m = re.exec(st.textContent)) !== null) refImgMap[m[1]] = m[2];
+    }
+    if (!Object.keys(refImgMap).length) return;
+
+    // 2. Pour chaque graphème visible (has-ref), injecter un <img>
+    iDoc.querySelectorAll('.g-wrap.has-ref[data-ref]').forEach(el => {
+        const id  = el.getAttribute('data-ref');
+        const src = refImgMap[id];
+        if (!src) return;
+        // Lire les dimensions depuis getComputedStyle(::before) — résolu en px par le navigateur
+        const ps = iDoc.defaultView.getComputedStyle(el, '::before');
+        const w  = ps.width  !== 'auto' ? ps.width  : '16px';
+        const h  = ps.height !== 'auto' ? ps.height : '16px';
+        const b  = ps.bottom !== 'auto' ? ps.bottom : '1em';
+        const img = iDoc.createElement('img');
+        img.src = src;
+        img.style.cssText = [
+            'position:absolute', 'left:50%',
+            '-webkit-transform:translateX(-50%)', 'transform:translateX(-50%)',
+            'bottom:' + b, 'width:' + w, 'height:' + h,
+            'object-fit:contain', 'pointer-events:none',
+        ].join(';');
+        el.appendChild(img);
+    });
+
+    // 3. Désactiver les ::before pour éviter le doublon (html2canvas peut parfois les rendre partiellement)
+    const kill = iDoc.createElement('style');
+    kill.textContent = '.g-wrap[data-ref]::before { display: none !important; }';
+    iDoc.head.appendChild(kill);
+}
+
 // ── Génération PDF client-side via html2canvas (utilisé pour ZIP multi-élèves) ─────────────
 // Qualité raster (scale=3 → ~288 dpi) — libs chargées lazily depuis assets/libs/.
 async function pdfClientSideCanvas(htmlStr) {
@@ -5033,6 +5082,11 @@ async function pdfClientSideCanvas(htmlStr) {
         // (y=1123, 2246…) vers la page suivante, avec marge haute de 68px.
         _fixCanvasPageBreaks(iDoc, 1123, 68);
         await new Promise(r => setTimeout(r, 100)); // laisser le DOM recalculer après les espaceurs
+
+        // html2canvas ne rend pas background-image:var() sur ::before.
+        // On injecte de vrais <img> dans chaque .g-wrap.has-ref avant la capture.
+        _injectRefImgsForCanvas(iDoc);
+        await new Promise(r => setTimeout(r, 80)); // laisser les data-URI se charger
 
         const fullHeight = Math.max(iBody.scrollHeight, 1123);
         const SCALE      = 3;  // ~288 dpi — plus net qu'à scale=2
