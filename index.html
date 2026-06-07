@@ -1156,6 +1156,7 @@
         <button class="btn btn-ghost" id="btnMesTextes" style="font-size:.82rem">📝 Mes textes</button>
         <span id="debugDims" style="display:none;font-size:.75rem;color:#64748b;font-family:monospace;padding:0 8px"></span>
         <button class="btn btn-ghost" id="btnTelecharger" style="font-size:.82rem">⬇ Télécharger</button>
+        <button class="btn btn-ghost" id="btnReinitialiser" title="Réinitialiser l'application" style="font-size:.82rem;color:var(--red)">🗑 Réinitialiser</button>
         <div id="topbarEleve" class="topbar-eleve" style="display:none">
             <div class="topbar-eleve-avatar" id="topbarAvatar"></div>
             <div>
@@ -1578,6 +1579,26 @@
         <div id="textesSauvegardesList" style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto"></div>
         <div style="margin-top:14px;display:flex;justify-content:flex-end">
             <button class="btn btn-ghost" id="btnFermerMesTextes">Fermer</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL RÉINITIALISATION ───────────────────────────── -->
+<div class="modal-overlay hidden" id="modalReinit">
+    <div class="modal" style="max-width:440px">
+        <div class="modal-title">🗑 Réinitialiser l'application</div>
+        <div class="modal-desc" style="color:var(--red);font-size:.84rem;line-height:1.55">
+            <strong>Attention</strong> — Cette action supprimera <strong>toutes les données</strong> :
+            élèves, groupes, contenu et paramètres stockés dans le navigateur.
+            Cette opération est <strong>irréversible</strong>.
+        </div>
+        <div class="modal-desc" style="font-size:.82rem;color:var(--muted);line-height:1.5">
+            Vous pouvez d'abord exporter vos élèves (fichier .json) pour les réimporter plus tard.
+        </div>
+        <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
+            <button class="btn btn-ghost" data-closemodal="modalReinit">Annuler</button>
+            <button class="btn btn-ghost" id="btnReinitExporter" style="margin-right:auto">📤 Exporter d'abord…</button>
+            <button class="btn btn-danger" id="btnReinitConfirm">🗑 Tout supprimer quand même</button>
         </div>
     </div>
 </div>
@@ -4587,6 +4608,28 @@ document.body.addEventListener('click', e => {
 });
 function closeModal(id) { document.getElementById(id)?.classList.add('hidden'); }
 function openModal(id)  { document.getElementById(id)?.classList.remove('hidden'); }
+
+// ── RÉINITIALISATION ─────────────────────────────────────────────────────────
+document.getElementById('btnReinitialiser').addEventListener('click', () => {
+    openModal('modalReinit');
+});
+document.getElementById('btnReinitExporter').addEventListener('click', () => {
+    closeModal('modalReinit');
+    // Déclencher l'export si des élèves existent, sinon réinitialiser directement
+    if (state.eleves.length) {
+        document.getElementById('btnExporter').click();
+    } else {
+        localStorage.clear();
+        location.reload();
+    }
+});
+document.getElementById('btnReinitConfirm').addEventListener('click', () => {
+    localStorage.clear();
+    location.reload();
+});
+document.getElementById('modalReinit').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal('modalReinit');
+});
 
 // ── EXPORTER
 document.getElementById('btnExporter').addEventListener('click', () => {
