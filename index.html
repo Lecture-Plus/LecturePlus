@@ -4742,12 +4742,6 @@ document.getElementById('btnDownloadConfirm').addEventListener('click', async ()
         btn.textContent = '⏳ Génération…';
         btn.disabled = true;
         try {
-            // GitHub Pages : déclencher l'impression native (qualité vectorielle)
-            if (!IS_LOCAL_SERVER) {
-                const inlined = await inlineReferentImages(popup._pdfHtml);
-                await pdfClientSide(inlined);
-                return;
-            }
             // Réutilise le PDF déjà généré s'il existe
             if (popup._pdfBlobUrl) {
                 const a = document.createElement('a');
@@ -4843,8 +4837,9 @@ const _pngCache = {};  // id → 'data:image/png;base64,...'
 // ── Fetch /api/pdf (serveur local) OU génération client-side (GitHub Pages)
 // Retourne toujours une Response-like avec .ok, .arrayBuffer(), .json().
 // canvasMode=true → html2canvas (multi-élèves ZIP sur GitHub Pages) ; false (défaut) → impression native
-async function pdfFetch(htmlStr, canvasMode = false) {
-    if (!IS_LOCAL_SERVER) return canvasMode ? pdfClientSideCanvas(htmlStr) : pdfClientSide(htmlStr);
+async function pdfFetch(htmlStr) {
+    // GitHub Pages / hébergement statique : html2canvas → téléchargement automatique
+    if (!IS_LOCAL_SERVER) return pdfClientSideCanvas(htmlStr);
 
     // ── Chemin serveur local : retry sur "Failed to fetch" (serveur pas encore prêt) ──
     const OPTS = {
@@ -5237,12 +5232,6 @@ async function downloadStudents(eleves, showNom) {
         const html = await inlineReferentImages(buildStudentApiHtml(eleves[0], showNom));
         showProgress(0.3, 'Génération du PDF…');
         const res = await pdfFetch(html);
-        // Mode impression (GitHub Pages) : la boîte de dialogue est déjà ouverte
-        if (res._printMode) {
-            showProgress(1, 'Fenêtre d’impression ouverte — choisissez « Enregistrer en PDF »');
-            setTimeout(hideProgress, 2500);
-            return;
-        }
         if (!res.ok) {
             const err = await res.json().catch(() => ({ error: res.statusText }));
             throw new Error(err.error || res.statusText);
@@ -5271,7 +5260,7 @@ async function downloadStudents(eleves, showNom) {
                 const i = idx++;
                 const elv = eleves[i];
                 const html = await inlineReferentImages(buildStudentApiHtml(elv, showNom));
-                const res = await pdfFetch(html, true);  // canvasMode: html2canvas pour ZIP
+                const res = await pdfFetch(html);
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({ error: res.statusText }));
                     throw new Error(`${elv.nom} : ${err.error || res.statusText}`);
