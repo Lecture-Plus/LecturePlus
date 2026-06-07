@@ -988,8 +988,11 @@
 
         /* ── RESPONSIVE 700px : layout mobile mono-colonne ──────────────── */
         @media (max-width: 700px) {
-            html { height: 100%; }
-            body { height: 100%; }
+            /* Verrouiller le scroll document — tout est contenu dans .app.
+               Sur iOS Safari, sans overflow:hidden sur html/body, le "rubber-band"
+               peut rendre la page plus grande que le viewport. */
+            html { height: 100%; overflow: hidden; max-width: 100vw; }
+            body { height: 100%; overflow: hidden; max-width: 100vw; }
             .app {
                 grid-template-columns: 1fr;
                 grid-template-rows: auto 1fr;
@@ -1063,17 +1066,18 @@
                 pointer-events: auto;
             }
             .col-divider { display: none; }
-            /* Colonne Contenu : overflow:hidden pour clipper le débordement horizontal.
-               La col-content est déjà pleine largeur (left:0 right:0) — pas besoin de zoom. */
+            /* Colonne Contenu : overflow:hidden pour clipper le débordement horizontal. */
             .col-content { padding: 8px; overflow: hidden; }
-            /* .input-area : min-width:0 empêche le flex-item d'imposer sa largeur au parent.
-               overflow:hidden clippe le débordement sans casser le scroll vertical interne. */
-            #colContent .input-area { min-width: 0; overflow: hidden; }
+            /* .input-area : overflow-x:hidden clippe le débordement horizontal.
+               NE PAS mettre overflow:hidden complet — cela bloquerait le scroll
+               vertical de .bloc-editor (overflow-y:auto) sur iOS Safari. */
+            #colContent .input-area { min-width: 0; overflow-x: hidden; }
             /* Barre de formatage : min-width:0 + width:100% = tient dans le conteneur.
                overflow-x:auto = tous les boutons accessibles par scroll horizontal. */
             .output-fmt-bar {
                 min-width: 0; width: 100%;
                 flex-wrap: nowrap;
+                touch-action: pan-x;
                 overflow-x: auto; overflow-y: visible;
                 -webkit-overflow-scrolling: touch;
                 padding-bottom: 6px;
@@ -5078,15 +5082,22 @@ async function pdfClientSideCanvas(htmlStr) {
         iframe.style.height = contentH0 + 'px';
         await new Promise(r => setTimeout(r, 50)); // laisser le layout se recalculer
 
-        // Pousser les mots/.g-wrap qui chevaucheraient les limites de page
-        // (y=1123, 2246…) vers la page suivante, avec marge haute de 68px.
-        _fixCanvasPageBreaks(iDoc, 1123, 68);
-        await new Promise(r => setTimeout(r, 100)); // laisser le DOM recalculer après les espaceurs
-
-        // html2canvas ne rend pas background-image:var() sur ::before.
-        // On injecte de vrais <img> dans chaque .g-wrap.has-ref avant la capture.
+        // 1) Injecter d'abord les <img> référents ET désactiver les ::before.
+        //    Cette opération peut changer les hauteurs des éléments (::before désactivés).
+        //    Elle DOIT précéder _fixCanvasPageBreaks pour que les espaceurs soient
+        //    calculés sur les hauteurs finales, pas sur les hauteurs avec ::before actifs.
         _injectRefImgsForCanvas(iDoc);
         await new Promise(r => setTimeout(r, 80)); // laisser les data-URI se charger
+
+        // Re-synchroniser la hauteur de l'iframe après l'injection
+        // (les ::before désactivés peuvent réduire scrollHeight)
+        iframe.style.height = Math.max(iBody.scrollHeight, 1123) + 'px';
+        await new Promise(r => setTimeout(r, 50));
+
+        // 2) Pousser les mots/.g-wrap qui chevaucheraient les limites de page
+        //    (y=1123, 2246…) vers la page suivante, avec marge haute de 68px.
+        _fixCanvasPageBreaks(iDoc, 1123, 68);
+        await new Promise(r => setTimeout(r, 100)); // laisser le DOM recalculer après les espaceurs
 
         const fullHeight = Math.max(iBody.scrollHeight, 1123);
         const SCALE      = 3;  // ~288 dpi — plus net qu'à scale=2
