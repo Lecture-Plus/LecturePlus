@@ -248,7 +248,8 @@ function runPdfOnWarmTab(html, resolve, reject) {
         var t1 = Date.now();
         ws.send('Page.printToPDF', {
             printBackground: true, preferCSSPageSize: true,
-            marginTop: 0, marginBottom: 0, marginLeft: 0, marginRight: 0,
+            // 68px à 96dpi = 0.7083" | 60px à 96dpi = 0.625"
+            marginTop: 0.7083, marginBottom: 0.7083, marginLeft: 0.625, marginRight: 0.625,
         }).then(function(result) {
             clearTimeout(timer);
             console.log('[PDF] printToPDF ' + (Date.now()-t1) + 'ms | total ' + (Date.now()-t0) + 'ms');

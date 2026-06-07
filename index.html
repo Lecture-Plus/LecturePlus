@@ -907,7 +907,8 @@
         }
         .render-fmt-bar input[type=range] {
             width: 76px; accent-color: var(--accent); cursor: pointer;
-            height: 4px; padding: 0; border: none; background: transparent;
+            /* height:20px agrandit la zone de clic/tap — sur desktop reste discret */
+            height: 20px; padding: 0; border: none; background: transparent;
         }
 
         /* ── POPUP PRÉVISUALISATION PDF ─────────────────────── */
@@ -1049,7 +1050,7 @@
             }
             .col-output {
                 position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-                min-width: 0;
+                min-width: 0; overflow: hidden;  /* empêche le débordement de l'output-box 794px */
                 -webkit-transform: translateX(100%);
                 transform: translateX(100%);
                 pointer-events: none;
@@ -1075,8 +1076,12 @@
                 -webkit-overflow-scrolling: touch; padding-bottom: 8px;
             }
             .rfmt-line-break { display: none; }
-            .render-fmt-bar input[type=range] { width: 90px; }
+            /* Sliders : touch-action:pan-y = glisser verticalement scroll la page,
+               glisser horizontalement déplace le curseur du slider (no conflict) */
+            .render-fmt-bar input[type=range] { width: 90px; touch-action: pan-y; height: 28px; }
             .output-fmt-bar { gap: 4px; }
+            /* La barre de mise en forme scrolle horizontalement sans conflit vertical */
+            .render-fmt-bar { touch-action: pan-x pan-y; }
             /* Popup PDF : plein écran sur mobile */
             .pdf-preview-popup {
                 left: 0 !important; right: 0 !important;
@@ -4904,7 +4909,22 @@ async function pdfClientSideCanvas(htmlStr) {
         loadScript('assets/libs/jspdf.umd.min.js',   () => typeof window.jspdf !== 'undefined'),
     ]);
 
-    const blobUrl = URL.createObjectURL(new Blob([htmlStr], { type: 'text/html' }));
+    // html2canvas ignore @page → on force body 794px + output-box padding 68px 60px
+    // (buildStudentApiHtml génère width:100% / padding:0 pour le mode print/CDP)
+    // showing-refs : la valeur exacte de refSizeScaled est déjà dans le CSS inliné,
+    // on extrait la valeur CSS existante via regex et on l'injecte dans l'override.
+    const showingRefsMatch = htmlStr.match(/\.output-box\.showing-refs\s*\{[^}]*padding-left:\s*([^;]+)/);
+    const showingRefsPL = showingRefsMatch
+        ? showingRefsMatch[1].trim()
+        : 'calc(60px + 5.5px + 8px)';
+    const canvasOverride = `<style id="lp-canvas-override">
+        body { width: 794px !important; min-height: 1123px !important; }
+        .output-box { padding: 68px 60px !important; }
+        .output-box.showing-refs { padding-left: calc(60px + ${showingRefsPL}) !important; }
+    </style>`;
+    const patchedHtml = htmlStr.replace('</head>', canvasOverride + '</head>');
+
+    const blobUrl = URL.createObjectURL(new Blob([patchedHtml], { type: 'text/html' }));
     const iframe  = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;opacity:0;pointer-events:none;';
     document.body.appendChild(iframe);
@@ -5093,7 +5113,12 @@ function buildStudentApiHtml(elv, showNom) {
     ).join('');
 
     const css = `
-        @page { size: A4; margin: 0; }
+        /* ── Marges gérées par @page (pas par body/output-box) pour que TOUTES les pages
+           (1, 2, 3…) aient le même espace en haut. Pour le serveur local (Chrome CDP),
+           les paramètres marginTop/Left/Right/Bottom de printToPDF fournissent ces marges
+           et overrident ce @page ; pour l'impression native (GitHub Pages) c'est ce @page
+           qui les fournit. Dans les deux cas : même résultat sur toutes les pages. */
+        @page { size: A4; margin: 68px 60px; }
         html { font-size: 16px; box-sizing: border-box; }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         @font-face { font-family:'OpenDyslexic'; font-weight:normal;
@@ -5104,33 +5129,31 @@ function buildStudentApiHtml(elv, showNom) {
         body {
             background: #fff; overflow: visible;
             font-family: Arial, Helvetica, sans-serif;
-            /* 794px = A4 à 96dpi. Pas de padding ici : géré par .output-box (identique au live). */
-            width: 794px; min-height: 1123px;
+            /* width:100% = utilise la zone de contenu après les marges @page.
+               Pas de padding : les marges sont dans @page (serveur) ou CSS @page (print native). */
+            width: 100%; min-height: auto;
             padding: 0; margin: 0;
             box-sizing: border-box;
             print-color-adjust: exact; -webkit-print-color-adjust: exact;
         }
         body.opendys .output-box { font-family:'OpenDyslexic',sans-serif; font-size:0.85rem; }
-        /* Isolation totale du nom : annule TOUT ce qu'hérite .output-box
-           (letter-spacing, word-spacing, line-height, font-size, font-family).
-           Sans ça, si espacement ajusté → line-height:4.3 → le nom prend 4× sa hauteur. */
+        /* Isolation totale du nom : annule TOUT ce qu'hérite .output-box */
         .print-nom { font-size:13px !important; font-weight:600; color:#1e293b;
                      font-family:Arial,Helvetica,sans-serif !important;
                      letter-spacing:normal !important; word-spacing:normal !important;
                      line-height:1.4 !important;
                      margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid #e2e8f0;
                      break-after:avoid; page-break-after:avoid; }
-        /* Structure identique au live : padding sur .output-box.
-           overflow:visible → les ::before référents qui débordent hors contenu restent visibles
-           (sans ce flag Chrome print peut clipper les pseudo-éléments absolus hors box). */
+        /* Pas de padding sur .output-box : les marges viennent de @page (toutes pages).
+           overflow:visible → les ::before référents qui débordent restent visibles. */
         .output-box { background:transparent; border:none; box-shadow:none;
-                      padding: 68px 60px; overflow: visible;
+                      padding: 0; overflow: visible;
                       font-size:${fontSize}; line-height:${lineH}; letter-spacing:${letterSp};
                       word-spacing:${wordSp}; font-family:Arial,Helvetica,sans-serif;
                       word-break:normal; overflow-wrap:break-word; }
         .output-box.espacement { letter-spacing:.12em; word-spacing:.8em; line-height:4.3; }
-        /* Formule identique au live : 60px base + demi-image + marge de sécurité */
-        .output-box.showing-refs { padding-left: calc(60px + ${refSizeScaled} * 0.5 + 8px); }
+        /* Avec référents : décalage gauche = demi-image + marge (le 60px vient de @page). */
+        .output-box.showing-refs { padding-left: calc(${refSizeScaled} * 0.5 + 8px); }
         .mot { display:inline-block; white-space:nowrap; vertical-align:baseline; word-break:normal; overflow-wrap:normal; }
         .mot-punct { display:inline-block; white-space:nowrap; vertical-align:baseline; word-break:normal; }
         .g { display:inline-block; position:relative; vertical-align:baseline; line-height:inherit; margin-right:${gGap}; letter-spacing:0; }
