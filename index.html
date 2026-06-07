@@ -4925,37 +4925,56 @@ async function pdfClientSide(htmlStr) {
 
 // ── Corrige les sauts de page pour html2canvas ────────────────────────────────────
 // Insère des espaceurs blancs avant les éléments qui chevaucheraient une limite
-// de page (y = pageH, 2*pageH …), de façon à les pousser sur la page suivante.
-// Résultat : le découpage à intervalle fixe ne coupe plus jamais un bloc.
+// de page (y=pageH, 2*pageH…).
+//
+// IMPORTANT : utilise offsetTop (accumuler jusqu'au body), PAS getBoundingClientRect.
+// getBoundingClientRect() dans une iframe de hauteur fixe retourne des coords
+// relatives au viewport qui peuvent être incorrectes pour le contenu hors vue.
+//
+// Cibles : .mot et .g-wrap (les unités atomiques effectivement générées par
+// buildStudentApiHtml) + blocs T/C/R. PAS .output-bloc-para (existe uniquement
+// dans le rendu live, jamais dans le HTML du PDF).
 function _fixCanvasPageBreaks(doc, pageH, margin) {
     const body = doc.body;
-    const sel  = '.output-bloc-para, .output-bloc-titre, .output-bloc-consigne, .output-bloc-remarque';
-    for (let iter = 0; iter < 40; iter++) {
-        const totalH = body.scrollHeight;
-        const nPages = Math.ceil(totalH / pageH);
+
+    // Position absolue depuis le haut du body (offsetTop accumulé jusqu'au body).
+    // Fonctionne pour les inline-block (.mot) comme pour les block (.output-bloc-titre).
+    function absTop(el) {
+        let y = 0, cur = el;
+        while (cur && cur !== body) { y += cur.offsetTop; cur = cur.offsetParent; }
+        return y;
+    }
+
+    // Unités atomiques du HTML PDF (.mot = mot, .g-wrap = graphème avec référent)
+    // + blocs T/C/R. SURTOUT PAS .output-bloc-texte entier (peut faire des pages
+    // entières et serait alors ignoré par la condition "trop grand").
+    const sel = '.mot, .g-wrap, .output-bloc-titre, .output-bloc-consigne, .output-bloc-remarque';
+
+    for (let iter = 0; iter < 60; iter++) {
+        const nPages = Math.ceil(body.scrollHeight / pageH);
         let changed  = false;
-        outer: for (let p = 1; p < nPages; p++) {
-            const boundY = p * pageH; // y où la page se termine
-            const bodyRect = body.getBoundingClientRect();
+        outer:
+        for (let p = 1; p < nPages; p++) {
+            const boundY = p * pageH;
             for (const el of doc.querySelectorAll(sel)) {
-                const r   = el.getBoundingClientRect();
-                const top = r.top   - bodyRect.top;
-                const bot = r.bottom - bodyRect.top;
-                // Ignorer les éléments trop hauts pour tenir sur une page (on ne peut rien faire)
+                const top = absTop(el);
+                const bot = top + el.offsetHeight;
+                // Ignorer les éléments plus grands qu'une page (rien à faire)
                 if (bot - top >= pageH - 2 * margin) continue;
                 if (top < boundY && bot > boundY) {
-                    // Cet élément chevauche la limite → espaceur pour le pousser
-                    // au début du contenu de la page suivante (= boundY + margin)
-                    const spacerH = boundY + margin - top;
+                    // Cet élément chevauche la limite de page p.
+                    // On insère un espaceur block juste avant lui pour le pousser
+                    // au début du contenu de la page p+1 (= boundY + margin).
+                    const spacerH = Math.ceil(boundY + margin - top);
                     const sp = doc.createElement('div');
-                    sp.style.cssText = 'height:' + spacerH + 'px;display:block;';
+                    sp.style.cssText = 'height:' + spacerH + 'px;display:block;clear:both;';
                     el.parentNode.insertBefore(sp, el);
                     changed = true;
-                    break outer; // relancer avec le layout mis à jour
+                    break outer; // relancer : le layout a changé, récupérer les nouvelles positions
                 }
             }
         }
-        if (!changed) break; // stable : plus aucun élément ne chevauche
+        if (!changed) break; // stable : aucun élément ne chevauche plus
     }
 }
 
@@ -4995,13 +5014,19 @@ async function pdfClientSideCanvas(htmlStr) {
         });
         await new Promise(r => setTimeout(r, 600));
 
-        // Pousser les éléments qui chevaucheraient les limites de page (y=1123, 2246…)
-        // vers la page suivante, avec marge haute (68px). Sans ça, le découpage
-        // à intervalle fixe coupe textes et référents arbitrairement.
-        _fixCanvasPageBreaks(iframe.contentDocument, 1123, 68);
-        await new Promise(r => setTimeout(r, 80)); // laisser le DOM recalculer
+        // Agrandir l'iframe à la hauteur réelle du contenu AVANT de corriger les
+        // sauts de page : sinon les éléments au-delà de 1123px sont hors layout.
+        const iDoc  = iframe.contentDocument;
+        const iBody = iDoc.body;
+        const contentH0 = Math.max(iBody.scrollHeight, 1123);
+        iframe.style.height = contentH0 + 'px';
+        await new Promise(r => setTimeout(r, 50)); // laisser le layout se recalculer
 
-        const iBody      = iframe.contentDocument.body;
+        // Pousser les mots/.g-wrap qui chevaucheraient les limites de page
+        // (y=1123, 2246…) vers la page suivante, avec marge haute de 68px.
+        _fixCanvasPageBreaks(iDoc, 1123, 68);
+        await new Promise(r => setTimeout(r, 100)); // laisser le DOM recalculer après les espaceurs
+
         const fullHeight = Math.max(iBody.scrollHeight, 1123);
         const SCALE      = 3;  // ~288 dpi — plus net qu'à scale=2
         const PAGE_W_PX  = 794;
