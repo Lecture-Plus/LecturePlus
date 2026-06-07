@@ -4919,6 +4919,42 @@ async function pdfClientSide(htmlStr) {
              json: async () => ({}) };
 }
 
+// ── Corrige les sauts de page pour html2canvas ────────────────────────────────────
+// Insère des espaceurs blancs avant les éléments qui chevaucheraient une limite
+// de page (y = pageH, 2*pageH …), de façon à les pousser sur la page suivante.
+// Résultat : le découpage à intervalle fixe ne coupe plus jamais un bloc.
+function _fixCanvasPageBreaks(doc, pageH, margin) {
+    const body = doc.body;
+    const sel  = '.output-bloc-para, .output-bloc-titre, .output-bloc-consigne, .output-bloc-remarque';
+    for (let iter = 0; iter < 40; iter++) {
+        const totalH = body.scrollHeight;
+        const nPages = Math.ceil(totalH / pageH);
+        let changed  = false;
+        outer: for (let p = 1; p < nPages; p++) {
+            const boundY = p * pageH; // y où la page se termine
+            const bodyRect = body.getBoundingClientRect();
+            for (const el of doc.querySelectorAll(sel)) {
+                const r   = el.getBoundingClientRect();
+                const top = r.top   - bodyRect.top;
+                const bot = r.bottom - bodyRect.top;
+                // Ignorer les éléments trop hauts pour tenir sur une page (on ne peut rien faire)
+                if (bot - top >= pageH - 2 * margin) continue;
+                if (top < boundY && bot > boundY) {
+                    // Cet élément chevauche la limite → espaceur pour le pousser
+                    // au début du contenu de la page suivante (= boundY + margin)
+                    const spacerH = boundY + margin - top;
+                    const sp = doc.createElement('div');
+                    sp.style.cssText = 'height:' + spacerH + 'px;display:block;';
+                    el.parentNode.insertBefore(sp, el);
+                    changed = true;
+                    break outer; // relancer avec le layout mis à jour
+                }
+            }
+        }
+        if (!changed) break; // stable : plus aucun élément ne chevauche
+    }
+}
+
 // ── Génération PDF client-side via html2canvas (utilisé pour ZIP multi-élèves) ─────────────
 // Qualité raster (scale=3 → ~288 dpi) — libs chargées lazily depuis assets/libs/.
 async function pdfClientSideCanvas(htmlStr) {
@@ -4954,6 +4990,12 @@ async function pdfClientSideCanvas(htmlStr) {
             iframe.src     = blobUrl;
         });
         await new Promise(r => setTimeout(r, 600));
+
+        // Pousser les éléments qui chevaucheraient les limites de page (y=1123, 2246…)
+        // vers la page suivante, avec marge haute (68px). Sans ça, le découpage
+        // à intervalle fixe coupe textes et référents arbitrairement.
+        _fixCanvasPageBreaks(iframe.contentDocument, 1123, 68);
+        await new Promise(r => setTimeout(r, 80)); // laisser le DOM recalculer
 
         const iBody      = iframe.contentDocument.body;
         const fullHeight = Math.max(iBody.scrollHeight, 1123);
@@ -5218,15 +5260,20 @@ function buildStudentApiHtml(elv, showNom) {
         .output-bloc-titre    { font-size:1.15em; font-weight:700; margin:.5em 0 .15em; line-height:1.4; display:block; }
         .output-bloc-consigne { font-size:.92em; margin:.25em 0; line-height:1.5; display:block; }
         .output-bloc-remarque { font-size:.92em; margin:.25em 0; line-height:1.5; display:block; }
-        /* ── Sauts de page : empêcher Chrome de couper au milieu d'un mot, d'un référent ou d'un bloc ── */
-        /* .mot et .g-wrap sont les unités atomiques : ne jamais couper à l'intérieur */
+        /* ── Sauts de page ────────────────────────────────────────────────── */
+        /* .output-bloc-para (display:block) : break-inside FIABLE pour Chrome print.
+           Empêche de couper au milieu d'un paragraphe.  */
+        .output-bloc-para { break-inside:avoid; page-break-inside:avoid; orphans:3; widows:3; }
+        .output-bloc-texte-multi { orphans:3; widows:3; }
+        /* .mot et .g-wrap (inline-block) : break-inside en backup (moins fiable que block) */
         .mot    { break-inside:avoid; page-break-inside:avoid; }
         .g-wrap { break-inside:avoid; page-break-inside:avoid; }
-        /* Blocs T/C/R et texte : éviter une coupure qui isolerait le titre de son contenu */
+        /* Blocs T/C/R : jamais couper à l'intérieur */
         .output-bloc-titre    { break-inside:avoid; page-break-inside:avoid; break-after:avoid; page-break-after:avoid; }
         .output-bloc-consigne { break-inside:avoid; page-break-inside:avoid; }
         .output-bloc-remarque { break-inside:avoid; page-break-inside:avoid; }
-        .output-bloc-texte    { break-inside:avoid; page-break-inside:avoid; }
+        /* .output-bloc-texte : PAS de break-inside global — Chrome l'ignore pour les
+           longs blocs et coupe n'importe où. La granularité .output-bloc-para suffit. */
     `;
 
     // Référents actifs : même logique que updateRefVis, inlinée dans le HTML du PDF
