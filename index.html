@@ -5111,9 +5111,13 @@ function buildStudentApiHtml(elv, showNom) {
             print-color-adjust: exact; -webkit-print-color-adjust: exact;
         }
         body.opendys .output-box { font-family:'OpenDyslexic',sans-serif; font-size:0.85rem; }
-        .print-nom { font-size:13px; font-weight:600; color:#1e293b;
-                     font-family:Arial,Helvetica,sans-serif;
-                     letter-spacing:normal; word-spacing:normal;
+        /* Isolation totale du nom : annule TOUT ce qu'hérite .output-box
+           (letter-spacing, word-spacing, line-height, font-size, font-family).
+           Sans ça, si espacement ajusté → line-height:4.3 → le nom prend 4× sa hauteur. */
+        .print-nom { font-size:13px !important; font-weight:600; color:#1e293b;
+                     font-family:Arial,Helvetica,sans-serif !important;
+                     letter-spacing:normal !important; word-spacing:normal !important;
+                     line-height:1.4 !important;
                      margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid #e2e8f0;
                      break-after:avoid; page-break-after:avoid; }
         /* Structure identique au live : padding sur .output-box.
