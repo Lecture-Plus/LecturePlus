@@ -1004,6 +1004,8 @@
             .topbar { padding: 0 10px; gap: 6px; }
             .topbar-logo { font-size: 1.05rem; }
             #btnMesTextes { display: none; }
+            #btnTelecharger { display: none; }
+            #btnReinitialiser { display: none; }
             .mobile-hamburger { display: flex; align-items: center; }
             /* Sidebar → drawer latéral */
             .sidebar {
@@ -1214,6 +1216,15 @@
                 <span>🎓 Référents actifs</span>
                 <span class="ref-trigger-count zero" id="refTriggerCount">0</span>
             </button>
+        </div>
+
+        <!-- Actions (visible sur mobile uniquement) -->
+        <div class="sidebar-section" id="sidebarMobileActions" style="display:none">
+            <div class="sidebar-section-title">Actions</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+                <button class="btn btn-ghost" id="btnTelechargerSidebar" style="font-size:.82rem;justify-content:flex-start">⬇ Télécharger en PDF</button>
+                <button class="btn btn-ghost" id="btnReinitialiserSidebar" style="font-size:.82rem;color:var(--red);justify-content:flex-start">🗑 Réinitialiser l’application</button>
+            </div>
         </div>
 
     </aside>
@@ -5856,6 +5867,19 @@ runDailyBackup();   // sauvegarde journalière (silencieuse, une fois par jour)
 
     btnMenu.addEventListener('click', openSidebar);
     overlay.addEventListener('click', closeSidebar);
+
+    // Afficher la section Actions mobile et brancher les boutons
+    const mobileActions = document.getElementById('sidebarMobileActions');
+    if (mobileActions) {
+        if (window.innerWidth <= 700) mobileActions.style.display = '';
+        window.addEventListener('resize', () => {
+            mobileActions.style.display = window.innerWidth <= 700 ? '' : 'none';
+        });
+    }
+    const btnTelSidebar   = document.getElementById('btnTelechargerSidebar');
+    const btnReinitSidebar = document.getElementById('btnReinitialiserSidebar');
+    if (btnTelSidebar)    btnTelSidebar.addEventListener('click',   () => { closeSidebar(); document.getElementById('btnTelecharger').click(); });
+    if (btnReinitSidebar) btnReinitSidebar.addEventListener('click', () => { closeSidebar(); document.getElementById('btnReinitialiser').click(); });
 
     // Fermer la sidebar quand on sélectionne un élève (pratique sur mobile)
     document.getElementById('eleveList').addEventListener('click', () => {
