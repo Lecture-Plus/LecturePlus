@@ -1063,6 +1063,25 @@
                 pointer-events: auto;
             }
             .col-divider { display: none; }
+            /* Colonne Contenu : padding réduit pour laisser plus de place */
+            .col-content { padding: 10px 12px 10px 12px; }
+            /* Barre de mise en forme : une seule ligne, scroll horizontal invisible */
+            .output-fmt-bar {
+                flex-wrap: nowrap;
+                overflow-x: auto; overflow-y: visible;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 6px;
+                scrollbar-width: none;  /* Firefox */
+            }
+            .output-fmt-bar::-webkit-scrollbar { display: none; }
+            /* Rendu : pas de scroll horizontal (l'output-box est zoomé par JS) */
+            .output-scroll-wrap {
+                overflow-x: hidden;
+                padding: 10px;
+            }
+            /* output-box : le zoom est appliqué inline par JS.
+               transform-origin: top left pour que le zoom parte du coin haut-gauche. */
+            .output-box { transform-origin: top left; }
             /* Cibles tactiles agrandies */
             .btn { min-height: 40px; }
             .eleve-chip { padding: 10px 12px; }
@@ -2798,7 +2817,11 @@ function _buildOutputAsync(bls, elv, box) {
     box.innerHTML = html;
     if (elv) updateRefVis(elv.referentsActifs);
 
-    if (!deferred.length) return;
+    if (!deferred.length) {
+        if (elv) updateRefVis(elv.referentsActifs);
+        document.dispatchEvent(new CustomEvent('lp-rendered'));
+        return;
+    }
     // Rendu des blocs non cachés : 1 par frame → UI reste à 60fps pendant le rendu
     function _renderNext() {
         if (myId !== _renderAsyncId) return; // annulé par un nouveau renderOutput
@@ -2814,7 +2837,7 @@ function _buildOutputAsync(bls, elv, box) {
             row.replaceWith(newEl);
         }
         if (deferred.length) requestAnimationFrame(_renderNext);
-        else if (elv) updateRefVis(elv.referentsActifs);
+        else { if (elv) updateRefVis(elv.referentsActifs); document.dispatchEvent(new CustomEvent('lp-rendered')); }
     }
     requestAnimationFrame(_renderNext);
 }
@@ -5669,6 +5692,29 @@ runDailyBackup();   // sauvegarde journalière (silencieuse, une fois par jour)
     document.addEventListener('eleve-selected', () => {
         if (window.innerWidth <= 700) showTab('rendu');
     });
+
+    // ── Zoom de l'output-box sur mobile pour tenir dans la largeur d'écran ──────
+    // L'output-box est 794px (simulation A4). On la scale visuellement ET en layout
+    // via `element.style.zoom` (affecte layout, contrairement à transform:scale).
+    // Résultat : la page A4 tient dans la largeur du téléphone sans scroll horizontal.
+    function _updateOutputZoom() {
+        const box  = document.querySelector('.output-box');
+        if (!box) return;
+        if (window.innerWidth > 700) {
+            box.style.zoom = '';
+            box.style.transformOrigin = '';
+            return;
+        }
+        const wrap = document.querySelector('.output-scroll-wrap');
+        const available = wrap ? (wrap.clientWidth - 20) : (window.innerWidth - 20);
+        const z = Math.min(1, available / 794);
+        box.style.zoom = z;
+    }
+    // Appliquer au chargement (après rendu initial)
+    setTimeout(_updateOutputZoom, 100);
+    window.addEventListener('resize', _updateOutputZoom);
+    // Ré-appliquer après chaque rendu (le contenu peut changer)
+    document.addEventListener('lp-rendered', _updateOutputZoom);
 })();
 </script>
 
