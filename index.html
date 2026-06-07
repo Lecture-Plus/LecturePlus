@@ -1063,8 +1063,12 @@
                 pointer-events: auto;
             }
             .col-divider { display: none; }
-            /* Colonne Contenu : padding réduit pour laisser plus de place */
-            .col-content { padding: 10px 12px 10px 12px; }
+            /* Colonne Contenu : padding réduit + overflow visible pour que le zoom
+               de .input-area ne soit pas clipé par le conteneur */
+            .col-content { padding: 8px 8px 8px 8px; overflow: visible; }
+            /* .input-area : transform-origin top left pour que le zoom parte
+               du coin haut-gauche (identique à output-box) */
+            #colContent .input-area { transform-origin: top left; overflow: visible; }
             /* Barre de mise en forme : une seule ligne, scroll horizontal invisible */
             .output-fmt-bar {
                 flex-wrap: nowrap;
@@ -5741,9 +5745,6 @@ runDailyBackup();   // sauvegarde journalière (silencieuse, une fois par jour)
     });
 
     // ── Zoom de l'output-box sur mobile pour tenir dans la largeur d'écran ──────
-    // L'output-box est 794px (simulation A4). On la scale visuellement ET en layout
-    // via `element.style.zoom` (affecte layout, contrairement à transform:scale).
-    // Résultat : la page A4 tient dans la largeur du téléphone sans scroll horizontal.
     function _updateOutputZoom() {
         const box  = document.querySelector('.output-box');
         if (!box) return;
@@ -5757,11 +5758,30 @@ runDailyBackup();   // sauvegarde journalière (silencieuse, une fois par jour)
         const z = Math.min(1, available / 794);
         box.style.zoom = z;
     }
+
+    // ── Zoom de la zone Contenu sur mobile ────────────────────────────────────
+    // La col-content est en position:absolute left:0 right:0 (donc pleine largeur écran)
+    // mais son contenu interne est conçu pour ~672px (desktop). On zoom .input-area
+    // de la même façon que .output-box, en calculant le facteur depuis la largeur réelle
+    // de la col-content.
+    function _updateContentZoom() {
+        const area = document.querySelector('#colContent .input-area');
+        if (!area) return;
+        if (window.innerWidth > 700) {
+            area.style.zoom = '';
+            return;
+        }
+        const col = document.getElementById('colContent');
+        const available = col ? (col.clientWidth - 24) : (window.innerWidth - 24);
+        const z = Math.min(1, available / 672);
+        area.style.zoom = z;
+    }
+
     // Appliquer au chargement (après rendu initial)
-    setTimeout(_updateOutputZoom, 100);
-    window.addEventListener('resize', _updateOutputZoom);
+    setTimeout(() => { _updateOutputZoom(); _updateContentZoom(); }, 100);
+    window.addEventListener('resize', () => { _updateOutputZoom(); _updateContentZoom(); });
     // Ré-appliquer après chaque rendu (le contenu peut changer)
-    document.addEventListener('lp-rendered', _updateOutputZoom);
+    document.addEventListener('lp-rendered', () => { _updateOutputZoom(); _updateContentZoom(); });
 })();
 </script>
 
