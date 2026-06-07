@@ -2,7 +2,10 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
     <title>Lecture — Outil Pédagogique</title>
     <style>
@@ -937,6 +940,165 @@
             align-items: center; justify-content: center;
             background: var(--bg); font-size: 13px; color: var(--muted);
         }
+
+        /* ── COMPATIBILITÉ CROSS-BROWSER ──────────────────────────────────── */
+        /* Firefox : scrollbars minces (équiv. ::-webkit-scrollbar) */
+        * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+        /* iOS Safari : empêche l'auto-zoom texte et le reflet bleu au tap */
+        html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+        button, a, label, [role="button"], .eleve-chip, .ref-card, .opt-toggle {
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Prévient le double-tap zoom sur iOS pour les éléments cliquables */
+        .btn, .fmt-btn, .bloc-type-btn, .bloc-rich-del, .output-row-badge,
+        .ref-card, .eleve-chip { touch-action: manipulation; }
+
+        /* ── HAMBURGER (caché sur desktop) ──────────────────────────────── */
+        .mobile-hamburger {
+            display: none;
+            padding: 6px 10px; background: none; border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm); cursor: pointer; color: var(--text);
+            font-size: 1.15rem; line-height: 1; flex-shrink: 0;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ── ONGLETS MOBILE (cachés sur desktop) ─────────────────────────── */
+        .mobile-tabs { display: none; flex-shrink: 0; background: var(--surface); border-bottom: 1px solid var(--border); }
+        .mobile-tab {
+            flex: 1; padding: 10px 8px; border: none; border-bottom: 3px solid transparent;
+            background: none; font-size: .83rem; font-weight: 600; cursor: pointer;
+            color: var(--muted); transition: color .15s, border-color .15s;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .mobile-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        /* ── OVERLAY SIDEBAR MOBILE (caché sur desktop) ──────────────────── */
+        .sidebar-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 150; background: rgba(0,0,0,.45);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ── RESPONSIVE 900px : sidebar réduite ─────────────────────────── */
+        @media (max-width: 900px) {
+            .app { grid-template-columns: 220px 1fr; }
+            .col-content { width: 420px; }
+        }
+
+        /* ── RESPONSIVE 700px : layout mobile mono-colonne ──────────────── */
+        @media (max-width: 700px) {
+            html { height: 100%; }
+            body { height: 100%; }
+            .app {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+                height: 100vh;
+                height: 100dvh;
+                overflow: hidden;
+            }
+            /* Topbar compacte */
+            .topbar { padding: 0 10px; gap: 6px; }
+            .topbar-logo { font-size: 1.05rem; }
+            #btnMesTextes { display: none; }
+            .mobile-hamburger { display: flex; align-items: center; }
+            /* Sidebar → drawer latéral */
+            .sidebar {
+                position: fixed;
+                left: 0; top: 0; bottom: 0;
+                z-index: 200;
+                width: min(300px, 85vw);
+                -webkit-transform: translateX(-100%);
+                transform: translateX(-100%);
+                -webkit-transition: -webkit-transform .28s cubic-bezier(.4,0,.2,1);
+                transition: transform .28s cubic-bezier(.4,0,.2,1);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                box-shadow: 4px 0 24px rgba(0,0,0,.2);
+            }
+            .sidebar.mobile-open {
+                -webkit-transform: translateX(0);
+                transform: translateX(0);
+            }
+            .sidebar-overlay {
+                display: block; opacity: 0; pointer-events: none;
+                -webkit-transition: opacity .28s;
+                transition: opacity .28s;
+            }
+            .sidebar-overlay.mobile-open { opacity: 1; pointer-events: auto; }
+            /* Onglets */
+            .mobile-tabs { display: flex; }
+            /* Main */
+            .main { grid-column: 1; overflow: hidden; }
+            .main-inner {
+                flex: 1; min-height: 0;
+                position: relative; overflow: hidden;
+            }
+            /* Colonnes : chacune remplit tout l'espace, slide horizontalement */
+            .col-content {
+                position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+                width: auto; max-width: none; min-width: 0;
+                border-right: none;
+                -webkit-transition: -webkit-transform .25s cubic-bezier(.4,0,.2,1);
+                transition: transform .25s cubic-bezier(.4,0,.2,1);
+                overflow: hidden;
+            }
+            .col-content.mobile-hidden {
+                -webkit-transform: translateX(-100%);
+                transform: translateX(-100%);
+                pointer-events: none;
+            }
+            .col-output {
+                position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+                min-width: 0;
+                -webkit-transform: translateX(100%);
+                transform: translateX(100%);
+                pointer-events: none;
+                -webkit-transition: -webkit-transform .25s cubic-bezier(.4,0,.2,1);
+                transition: transform .25s cubic-bezier(.4,0,.2,1);
+            }
+            .col-output.mobile-active {
+                -webkit-transform: translateX(0);
+                transform: translateX(0);
+                pointer-events: auto;
+            }
+            .col-divider { display: none; }
+            /* Cibles tactiles agrandies */
+            .btn { min-height: 40px; }
+            .eleve-chip { padding: 10px 12px; }
+            /* Prévient le zoom iOS sur les champs (font-size < 16px déclenche le zoom) */
+            .eleve-add input, .bloc-rich-edit, .bloc-textarea, .ref-search {
+                font-size: 16px !important;
+            }
+            /* Barre de réglages scrollable horizontalement */
+            .render-fmt-bar {
+                flex-wrap: nowrap; overflow-x: auto;
+                -webkit-overflow-scrolling: touch; padding-bottom: 8px;
+            }
+            .rfmt-line-break { display: none; }
+            .render-fmt-bar input[type=range] { width: 90px; }
+            .output-fmt-bar { gap: 4px; }
+            /* Popup PDF : plein écran sur mobile */
+            .pdf-preview-popup {
+                left: 0 !important; right: 0 !important;
+                top: 0 !important; bottom: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                height: 100dvh !important;
+                border-radius: 0; border: none; resize: none;
+            }
+            /* Modales : sheet du bas sur mobile */
+            .modal-overlay { align-items: flex-end; padding: 0; }
+            .modal {
+                width: 100vw; max-width: 100%;
+                max-height: 92vh; max-height: 92dvh;
+                border-radius: var(--radius) var(--radius) 0 0;
+            }
+            /* Nom élève topbar tronqué */
+            .topbar-eleve-name {
+                max-width: 90px; overflow: hidden;
+                text-overflow: ellipsis; white-space: nowrap;
+            }
+        }
     </style>
 </head>
 <body>
@@ -946,6 +1108,7 @@
     <!-- ── TOPBAR ── -->
     <header class="topbar">
         <div class="topbar-logo">lecture<span>+</span></div>
+        <button class="mobile-hamburger" id="btnMobileMenu" aria-label="Menu">☰</button>
         <div class="topbar-sep"></div>
         <button class="btn btn-ghost" id="btnMesTextes" style="font-size:.82rem">📝 Mes textes</button>
         <span id="debugDims" style="display:none;font-size:.75rem;color:#64748b;font-family:monospace;padding:0 8px"></span>
@@ -1011,6 +1174,9 @@
 
     </aside>
 
+    <!-- Overlay pour fermer la sidebar sur mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <!-- Modale référents -->
     <div class="ref-overlay" id="refOverlay">
         <div class="ref-modal">
@@ -1031,6 +1197,10 @@
 
     <!-- ── MAIN ── -->
     <main class="main">
+        <div class="mobile-tabs">
+            <button class="mobile-tab active" id="mobileTabContenu">✏ Contenu</button>
+            <button class="mobile-tab" id="mobileTabRendu">👁 Rendu</button>
+        </div>
         <div class="main-inner">
 
             <!-- Colonne gauche : Contenu -->
@@ -1609,7 +1779,11 @@ function load() {
     }
     catch { return { eleves:[], actifId:null, groupes:[], activeGroupFilter:null }; }
 }
-function save(data) { localStorage.setItem(SK, JSON.stringify(data)); }
+function save(data) {
+    localStorage.setItem(SK, JSON.stringify(data));
+    _idb.set(SK, data);
+    _debouncedWriteToFile();
+}
 
 function loadBlocs() {
     try {
@@ -1617,7 +1791,11 @@ function loadBlocs() {
         return (Array.isArray(b) && b.length) ? b : [newBloc('texte')];
     } catch { return [newBloc('texte')]; }
 }
-function saveBlocs() { localStorage.setItem(SK_BLOCS, JSON.stringify(blocs)); }
+function saveBlocs() {
+    localStorage.setItem(SK_BLOCS, JSON.stringify(blocs));
+    _idb.set(SK_BLOCS, blocs);
+    _debouncedWriteToFile();
+}
 
 function newBloc(type) { return { id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), type, content: '' }; }
 function newGroupe(nom) { return { id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), nom, color: GROUP_COLORS[state.groupes.length % GROUP_COLORS.length] }; }
@@ -1626,6 +1804,167 @@ const sortAlpha = (a, b) => a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'bas
 let state = load();
 let blocs = loadBlocs();
 let pendingFocusId = null;
+
+// ══════════════════════════════════════════════════════════
+// SAUVEGARDE MULTICOUCHE
+//  Couche 1 : localStorage          (sync, rapide, ~5 Mo)
+//  Couche 2 : IndexedDB             (async, résiste au vide-cache, illimité)
+//  Couche 3 : Fichier disque        (File System Access API, Chrome/Edge)
+//             -> auto-sauvegarde débouncée à chaque modification
+// ══════════════════════════════════════════════════════════
+
+// ── Couche 2 : IndexedDB ─────────────────────────────────────────────
+const _idb = (() => {
+    const DB   = 'lecturePlus_v1';
+    const STORE = 'data';
+    let _db = null;
+    function _open() {
+        if (_db) return Promise.resolve(_db);
+        return new Promise((res, rej) => {
+            const r = indexedDB.open(DB, 1);
+            r.onupgradeneeded = e => e.target.result.createObjectStore(STORE);
+            r.onsuccess = e => { _db = e.target.result; res(_db); };
+            r.onerror   = () => rej(r.error);
+        });
+    }
+    return {
+        async set(key, value) {
+            try {
+                const db = await _open();
+                await new Promise((res, rej) => {
+                    const tx = db.transaction(STORE, 'readwrite');
+                    const r  = tx.objectStore(STORE).put(value, key);
+                    r.onsuccess = res; r.onerror = () => rej(r.error);
+                });
+            } catch(e) { console.warn('[IDB] set:', e); }
+        },
+        async get(key) {
+            try {
+                const db = await _open();
+                return await new Promise((res, rej) => {
+                    const tx = db.transaction(STORE, 'readonly');
+                    const r  = tx.objectStore(STORE).get(key);
+                    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+                });
+            } catch(e) { console.warn('[IDB] get:', e); return undefined; }
+        },
+    };
+})();
+
+// Restauration depuis IDB si localStorage est vide (vide-cache, nouvelle session)
+async function _restoreFromIDB() {
+    const s = await _idb.get(SK);
+    const b = await _idb.get(SK_BLOCS);
+    const p = await _idb.get(SK_PRESETS);
+    let restored = false;
+    if (s) { localStorage.setItem(SK, JSON.stringify(s));       state = load();       restored = true; }
+    if (b) { localStorage.setItem(SK_BLOCS, JSON.stringify(b)); blocs = loadBlocs(); restored = true; }
+    if (p) { localStorage.setItem(SK_PRESETS, JSON.stringify(p)); }
+    if (restored) {
+        console.info('[IDB] Données restaurées depuis IndexedDB après vide-cache.');
+        renderAll();
+    }
+}
+
+// ── Couche 3 : Fichier disque (File System Access API) ────────────────────
+const SK_FILE_HANDLE = '_fileHandle';
+let _fileHandle = null;
+let _fileWriteTimer = null;
+
+function _debouncedWriteToFile() {
+    // Débouncé 2s : évite d'écrire sur disque à chaque frappe
+    clearTimeout(_fileWriteTimer);
+    _fileWriteTimer = setTimeout(_writeToFile, 2000);
+}
+
+async function _writeToFile() {
+    if (!_fileHandle) return;
+    try {
+        const data = {
+            version:  2,
+            savedAt:  new Date().toISOString(),
+            state:    JSON.parse(localStorage.getItem(SK)         || 'null'),
+            blocs:    JSON.parse(localStorage.getItem(SK_BLOCS)   || 'null'),
+            presets:  JSON.parse(localStorage.getItem(SK_PRESETS) || 'null'),
+        };
+        const w = await _fileHandle.createWritable();
+        await w.write(JSON.stringify(data, null, 2));
+        await w.close();
+    } catch(e) {
+        if (e.name === 'NotAllowedError') { _fileHandle = null; _renderSaveBanner(); }
+        else console.warn('[FileSave] write:', e);
+    }
+}
+
+async function _pickSaveFile() {
+    if (typeof window.showSaveFilePicker !== 'function') return;
+    try {
+        _fileHandle = await window.showSaveFilePicker({
+            suggestedName: 'lecture-plus-sauvegarde.json',
+            types: [{ description: 'Sauvegarde Lecture+', accept: { 'application/json': ['.json'] } }],
+        });
+        await _idb.set(SK_FILE_HANDLE, _fileHandle);
+        await _writeToFile();
+        _renderSaveBanner();
+    } catch(e) { if (e.name !== 'AbortError') console.warn('[FileSave] pick:', e); }
+}
+
+function _renderSaveBanner() {
+    const hasApi = typeof window.showSaveFilePicker === 'function';
+    const existing = document.getElementById('_lp_saveBanner');
+    // Cacher si API absente (Firefox) ou fichier déjà configuré
+    if (!hasApi || _fileHandle) { existing?.remove(); return; }
+    if (existing) return; // déjà affichée
+    const banner = document.createElement('div');
+    banner.id = '_lp_saveBanner';
+    banner.style.cssText = [
+        'position:fixed;bottom:0;left:0;right:0;z-index:10000',
+        'background:#f97316;color:#fff;padding:8px 16px',
+        'font-size:.82rem;font-family:system-ui,sans-serif',
+        'display:flex;align-items:center;gap:10px;box-shadow:0 -2px 8px rgba(0,0,0,.2)',
+    ].join(';');
+    banner.innerHTML = `
+        <span style="flex:1">⚠️ Vos données ne sont sauvegardées que dans Chrome. En cas de vide-cache ou changement d'ordinateur, elles seraient perdues.
+        <b>Activez la sauvegarde automatique sur disque.</b></span>
+        <button id="_lp_saveBannerBtn" style="background:#fff;color:#f97316;border:none;border-radius:4px;padding:5px 14px;font-weight:700;cursor:pointer;font-size:.82rem;white-space:nowrap">💾 Configurer</button>
+        <button id="_lp_saveBannerClose" style="background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;line-height:1;padding:0 4px" title="Fermer (ne réapparaîta plus aujourd'hui)">✕</button>
+    `;
+    document.body.appendChild(banner);
+    document.getElementById('_lp_saveBannerBtn').onclick   = _pickSaveFile;
+    document.getElementById('_lp_saveBannerClose').onclick = () => {
+        banner.remove();
+        // Réafficher demain seulement
+        sessionStorage.setItem('_lp_bannerDismissed', '1');
+    };
+}
+
+// ── Init asynchrone au démarrage ───────────────────────────────────────────────────
+(async () => {
+    // Couche 2 : si localStorage vide (vide-cache), restaurer depuis IDB
+    if (!state.eleves.length) await _restoreFromIDB();
+
+    // Couche 3 : récupérer le FileSystemFileHandle stocké en IDB
+    try {
+        const h = await _idb.get(SK_FILE_HANDLE);
+        if (h) {
+            const perm = await h.queryPermission({ mode: 'readwrite' });
+            if (perm === 'granted') {
+                _fileHandle = h;
+            } else {
+                // Demander la permission (nécessite un geste utilisateur en théorie,
+                // mais Chrome l'accorde souvent si le fichier existe encore)
+                const asked = await h.requestPermission({ mode: 'readwrite' }).catch(() => 'denied');
+                if (asked === 'granted') _fileHandle = h;
+            }
+        }
+    } catch(e) { _fileHandle = null; }
+
+    // Afficher la bannière si la sauvegarde fichier n'est pas configurée
+    // (et pas déjà fermée cette session)
+    if (!sessionStorage.getItem('_lp_bannerDismissed')) {
+        _renderSaveBanner();
+    }
+})();
 
 function eleve() { return state.eleves.find(e => e.id === state.actifId) || null; }
 
@@ -1760,7 +2099,11 @@ function loadPresets() {
     try { return Object.assign({}, PRESET_DEFAULTS, JSON.parse(localStorage.getItem(SK_PRESETS))); }
     catch { return Object.assign({}, PRESET_DEFAULTS); }
 }
-function savePresets(p) { localStorage.setItem(SK_PRESETS, JSON.stringify(p)); }
+function savePresets(p) {
+    localStorage.setItem(SK_PRESETS, JSON.stringify(p));
+    _idb.set(SK_PRESETS, p);
+    _debouncedWriteToFile();
+}
 
 // Extraire le texte brut d'un HTML (pour envoyer à LireCouleur)
 function stripHtml(html) {
@@ -2818,6 +3161,7 @@ document.getElementById('eleveList').addEventListener('click', e => {
         state.actifId = chip.dataset.id;
         save(state);
         renderAll();
+        document.dispatchEvent(new CustomEvent('eleve-selected'));
     }
 });
 
@@ -4393,6 +4737,12 @@ document.getElementById('btnDownloadConfirm').addEventListener('click', async ()
         btn.textContent = '⏳ Génération…';
         btn.disabled = true;
         try {
+            // GitHub Pages : déclencher l'impression native (qualité vectorielle)
+            if (!IS_LOCAL_SERVER) {
+                const inlined = await inlineReferentImages(popup._pdfHtml);
+                await pdfClientSide(inlined);
+                return;
+            }
             // Réutilise le PDF déjà généré s'il existe
             if (popup._pdfBlobUrl) {
                 const a = document.createElement('a');
@@ -4423,7 +4773,7 @@ document.getElementById('btnDownloadConfirm').addEventListener('click', async ()
         }
     });
 
-    // ── Bouton Prévisualiser — génère le vrai PDF via Chrome CDP et l'affiche dans l'iframe
+    // ── Bouton Prévisualiser — GitHub Pages : aperçu HTML ; serveur local : vrai PDF CDP
     document.getElementById('btnPreviewPdf').addEventListener('click', async () => {
         const elv = state.eleves.find(e => e.id === state.actifId);
         if (!elv) { alert('Sélectionnez un élève.'); return; }
@@ -4434,13 +4784,23 @@ document.getElementById('btnDownloadConfirm').addEventListener('click', async ()
         popup._pdfHtml  = buildStudentApiHtml(elv, true);
         popup._fileName = `${elv.nom}.pdf`;
 
-        // Ouvrir le popup immédiatement avec l'indicateur de chargement
-        loading.style.display = '';   // retire l'inline style → CSS remet display:flex
+        loading.style.display = '';
         frame.src = '';
         popup.classList.remove('hidden');
 
         try {
             const inlined = await inlineReferentImages(popup._pdfHtml);
+
+            if (!IS_LOCAL_SERVER) {
+                // GitHub Pages : aperçu HTML A4 (pas de blob PDF disponible côté client)
+                const previewHtml = buildPreviewHtml(inlined);
+                const previewBlob = new Blob([previewHtml], { type: 'text/html' });
+                popup._blobUrl = URL.createObjectURL(previewBlob);
+                loading.style.display = 'none';
+                frame.src = popup._blobUrl;
+                return;
+            }
+
             const res = await pdfFetch(inlined);
             if (!res.ok) {
                 const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -4451,7 +4811,7 @@ document.getElementById('btnDownloadConfirm').addEventListener('click', async ()
             const pdfUrl  = URL.createObjectURL(pdfBlob);
             popup._pdfBlobUrl = pdfUrl;
             loading.style.display = 'none';
-            frame.src = pdfUrl;       // Chrome affiche le PDF natif dans l'iframe
+            frame.src = pdfUrl;
         } catch(err) {
             loading.style.display = 'none';
             popup.classList.add('hidden');
@@ -4477,8 +4837,9 @@ const _pngCache = {};  // id → 'data:image/png;base64,...'
 
 // ── Fetch /api/pdf (serveur local) OU génération client-side (GitHub Pages)
 // Retourne toujours une Response-like avec .ok, .arrayBuffer(), .json().
-async function pdfFetch(htmlStr) {
-    if (!IS_LOCAL_SERVER) return pdfClientSide(htmlStr);
+// canvasMode=true → html2canvas (multi-élèves ZIP sur GitHub Pages) ; false (défaut) → impression native
+async function pdfFetch(htmlStr, canvasMode = false) {
+    if (!IS_LOCAL_SERVER) return canvasMode ? pdfClientSideCanvas(htmlStr) : pdfClientSide(htmlStr);
 
     // ── Chemin serveur local : retry sur "Failed to fetch" (serveur pas encore prêt) ──
     const OPTS = {
@@ -4504,40 +4865,64 @@ async function pdfFetch(htmlStr) {
     }
 }
 
-// ── Génération PDF entièrement côté navigateur (GitHub Pages / hébergement statique)
-// Utilise html2canvas (screenshot) + jsPDF (assemblage A4 multi-pages).
-// Les libs sont déjà dans assets/libs/ — chargées lazily.
+// ── Génération PDF client-side via IMPRESSION NATIVE du navigateur ───────────────────────
+// → Qualité vectorielle (identique Chrome CDP), < 200 ms, sauts de page via CSS @media print.
+// L'utilisateur choisit "Enregistrer en PDF" dans la boîte de dialogue du navigateur.
 async function pdfClientSide(htmlStr) {
+    const blobUrl = URL.createObjectURL(new Blob([htmlStr], { type: 'text/html' }));
+    const iframe  = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:none;visibility:hidden;';
+    document.body.appendChild(iframe);
+    try {
+        await new Promise((resolve, reject) => {
+            iframe.onload  = resolve;
+            iframe.onerror = () => reject(new Error('Chargement iframe échoué'));
+            iframe.src = blobUrl;
+        });
+        // Laisser le temps aux polices web (OpenDyslexic) de se charger
+        await new Promise(r => setTimeout(r, 400));
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+    } finally {
+        // Nettoyer après fermeture de la boîte de dialogue (délai de sécurité)
+        setTimeout(() => {
+            try { document.body.removeChild(iframe); } catch (_) {}
+            URL.revokeObjectURL(blobUrl);
+        }, 10000);
+    }
+    // Signal "print mode" : pas de blob PDF à retourner, le navigateur gère
+    return { ok: true, _printMode: true,
+             arrayBuffer: async () => new ArrayBuffer(0),
+             json: async () => ({}) };
+}
+
+// ── Génération PDF client-side via html2canvas (utilisé pour ZIP multi-élèves) ─────────────
+// Qualité raster (scale=3 → ~288 dpi) — libs chargées lazily depuis assets/libs/.
+async function pdfClientSideCanvas(htmlStr) {
     await Promise.all([
         loadScript('assets/libs/html2canvas.min.js', () => typeof html2canvas !== 'undefined'),
         loadScript('assets/libs/jspdf.umd.min.js',   () => typeof window.jspdf !== 'undefined'),
     ]);
 
-    // Ouvre le HTML dans un iframe invisible (blob URL → même origine → pas de CORS)
     const blobUrl = URL.createObjectURL(new Blob([htmlStr], { type: 'text/html' }));
     const iframe  = document.createElement('iframe');
-    // 794px = largeur A4 à 96dpi, position hors viewport mais dans le DOM pour que
-    // html2canvas puisse lire les styles calculés et les images.
     iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;opacity:0;pointer-events:none;';
     document.body.appendChild(iframe);
 
     try {
-        // Attendre le chargement complet (images, polices web)
         await new Promise((resolve, reject) => {
             iframe.onload  = resolve;
             iframe.onerror = reject;
             iframe.src     = blobUrl;
         });
-        // Laisser le temps aux polices OpenDyslexic de s'appliquer
         await new Promise(r => setTimeout(r, 600));
 
         const iBody      = iframe.contentDocument.body;
         const fullHeight = Math.max(iBody.scrollHeight, 1123);
-        const SCALE      = 2; // rendu 2× pour la qualité
+        const SCALE      = 3;  // ~288 dpi — plus net qu'à scale=2
         const PAGE_W_PX  = 794;
-        const PAGE_H_PX  = 1123; // A4 à 96 dpi
+        const PAGE_H_PX  = 1123;
 
-        // Capture tout le contenu en une seule passe
         const canvas = await html2canvas(iBody, {
             scale:       SCALE,
             width:       PAGE_W_PX,
@@ -4555,9 +4940,8 @@ async function pdfClientSide(htmlStr) {
         const A4_H_MM = 297;
         const pageCount = Math.ceil(canvas.height / (SCALE * PAGE_H_PX));
 
-        // Découper le canvas en tranches A4 et ajouter une page par tranche
         const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width = canvas.width;
+        sliceCanvas.width  = canvas.width;
         sliceCanvas.height = SCALE * PAGE_H_PX;
         const ctx = sliceCanvas.getContext('2d');
 
@@ -4573,12 +4957,10 @@ async function pdfClientSide(htmlStr) {
                 0, 0,
                 canvas.width, SCALE * PAGE_H_PX
             );
-            // JPEG 92% : qualité visuelle excellente, taille ~3× plus petite que PNG
-            pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, A4_W_MM, A4_H_MM);
+            pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.93), 'JPEG', 0, 0, A4_W_MM, A4_H_MM);
         }
 
         const pdfBuf = pdf.output('arraybuffer');
-        // Simuler une Response pour que le code appelant soit identique (serveur ou client)
         return new Response(pdfBuf, {
             status: 200,
             headers: { 'Content-Type': 'application/pdf' },
@@ -4651,7 +5033,7 @@ async function inlineReferentImages(html) {
 
 // ── Injecte du CSS de simulation A4 dans le HTML de prévisualisation
 function buildPreviewHtml(pdfHtml) {
-    // buildStudentApiHtml génère déjà @page{margin:0} + body{width:794px; padding:68px 60px}
+    // buildStudentApiHtml génère déjà @page{margin:0} + body{width:794px;padding:0} + .output-box{padding:68px 60px}
     // On ajoute uniquement le fond gris de visionneuse et l'ombre pour la prévisualisation iframe
     const a4css = `<style id="lp-a4-sim">
         html { background: #525659 !important; padding: 30px !important; margin: 0 !important; box-sizing: border-box; }
@@ -4720,24 +5102,31 @@ function buildStudentApiHtml(elv, showNom) {
             src: url('assets/fonts/OpenDyslexic-Bold.otf') format('opentype'); }
         :root { --red:#e25555; --blue:#3b82f6; --orange:#f97316; --accent:#6366f1; }
         body {
-            background: #fff;
+            background: #fff; overflow: visible;
             font-family: Arial, Helvetica, sans-serif;
-            /* Dimensions identiques au live : 794px A4 avec marges 18mm/16mm = 68px/60px à 96dpi */
+            /* 794px = A4 à 96dpi. Pas de padding ici : géré par .output-box (identique au live). */
             width: 794px; min-height: 1123px;
-            padding: 68px 60px; margin: 0 auto;
+            padding: 0; margin: 0;
             box-sizing: border-box;
             print-color-adjust: exact; -webkit-print-color-adjust: exact;
         }
         body.opendys .output-box { font-family:'OpenDyslexic',sans-serif; font-size:0.85rem; }
         .print-nom { font-size:13px; font-weight:600; color:#1e293b;
-                     margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid #e2e8f0; }
-        .output-box { background:transparent; border:none; padding:0; box-shadow:none;
+                     font-family:Arial,Helvetica,sans-serif;
+                     letter-spacing:normal; word-spacing:normal;
+                     margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid #e2e8f0;
+                     break-after:avoid; page-break-after:avoid; }
+        /* Structure identique au live : padding sur .output-box.
+           overflow:visible → les ::before référents qui débordent hors contenu restent visibles
+           (sans ce flag Chrome print peut clipper les pseudo-éléments absolus hors box). */
+        .output-box { background:transparent; border:none; box-shadow:none;
+                      padding: 68px 60px; overflow: visible;
                       font-size:${fontSize}; line-height:${lineH}; letter-spacing:${letterSp};
                       word-spacing:${wordSp}; font-family:Arial,Helvetica,sans-serif;
                       word-break:normal; overflow-wrap:break-word; }
         .output-box.espacement { letter-spacing:.12em; word-spacing:.8em; line-height:4.3; }
-        /* Référents : décalage du contenu pour que les images ne débordent pas à gauche */
-        .output-box.showing-refs { padding-left: calc(${refSizeScaled} * 0.5 + 8px); }
+        /* Formule identique au live : 60px base + demi-image + marge de sécurité */
+        .output-box.showing-refs { padding-left: calc(60px + ${refSizeScaled} * 0.5 + 8px); }
         .mot { display:inline-block; white-space:nowrap; vertical-align:baseline; word-break:normal; overflow-wrap:normal; }
         .mot-punct { display:inline-block; white-space:nowrap; vertical-align:baseline; word-break:normal; }
         .g { display:inline-block; position:relative; vertical-align:baseline; line-height:inherit; margin-right:${gGap}; letter-spacing:0; }
@@ -4784,6 +5173,15 @@ function buildStudentApiHtml(elv, showNom) {
         .output-bloc-titre    { font-size:1.15em; font-weight:700; margin:.5em 0 .15em; line-height:1.4; display:block; }
         .output-bloc-consigne { font-size:.92em; margin:.25em 0; line-height:1.5; display:block; }
         .output-bloc-remarque { font-size:.92em; margin:.25em 0; line-height:1.5; display:block; }
+        /* ── Sauts de page : empêcher Chrome de couper au milieu d'un mot, d'un référent ou d'un bloc ── */
+        /* .mot et .g-wrap sont les unités atomiques : ne jamais couper à l'intérieur */
+        .mot    { break-inside:avoid; page-break-inside:avoid; }
+        .g-wrap { break-inside:avoid; page-break-inside:avoid; }
+        /* Blocs T/C/R et texte : éviter une coupure qui isolerait le titre de son contenu */
+        .output-bloc-titre    { break-inside:avoid; page-break-inside:avoid; break-after:avoid; page-break-after:avoid; }
+        .output-bloc-consigne { break-inside:avoid; page-break-inside:avoid; }
+        .output-bloc-remarque { break-inside:avoid; page-break-inside:avoid; }
+        .output-bloc-texte    { break-inside:avoid; page-break-inside:avoid; }
     `;
 
     // Référents actifs : même logique que updateRefVis, inlinée dans le HTML du PDF
@@ -4800,8 +5198,7 @@ function buildStudentApiHtml(elv, showNom) {
         <style>${css}</style>
         ${refVisStyle}
     </head><body class="${opendysCls.trim()}">
-    ${header}
-    <div class="output-box${spaceCls}${hasRefs ? ' showing-refs' : ''}">${content}</div>
+    <div class="output-box${spaceCls}${hasRefs ? ' showing-refs' : ''}">${header}${content}</div>
     </body></html>`;
 }
 
@@ -4813,6 +5210,12 @@ async function downloadStudents(eleves, showNom) {
         const html = await inlineReferentImages(buildStudentApiHtml(eleves[0], showNom));
         showProgress(0.3, 'Génération du PDF…');
         const res = await pdfFetch(html);
+        // Mode impression (GitHub Pages) : la boîte de dialogue est déjà ouverte
+        if (res._printMode) {
+            showProgress(1, 'Fenêtre d’impression ouverte — choisissez « Enregistrer en PDF »');
+            setTimeout(hideProgress, 2500);
+            return;
+        }
         if (!res.ok) {
             const err = await res.json().catch(() => ({ error: res.statusText }));
             throw new Error(err.error || res.statusText);
@@ -4841,7 +5244,7 @@ async function downloadStudents(eleves, showNom) {
                 const i = idx++;
                 const elv = eleves[i];
                 const html = await inlineReferentImages(buildStudentApiHtml(elv, showNom));
-                const res = await pdfFetch(html);
+                const res = await pdfFetch(html, true);  // canvasMode: html2canvas pour ZIP
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({ error: res.statusText }));
                     throw new Error(`${elv.nom} : ${err.error || res.statusText}`);
@@ -5198,6 +5601,57 @@ runDailyBackup();   // sauvegarde journalière (silencieuse, une fois par jour)
                 body: JSON.stringify({ windowWidth: window.outerWidth, windowHeight: window.outerHeight })
             }).catch(() => {});
         }, 800);
+    });
+})();
+
+// ── NAVIGATION MOBILE (hamburger + onglets) ──────────────────────────────────
+(function () {
+    const sidebar  = document.querySelector('.sidebar');
+    const overlay  = document.getElementById('sidebarOverlay');
+    const btnMenu  = document.getElementById('btnMobileMenu');
+    const colC     = document.getElementById('colContent');
+    const colO     = document.getElementById('colOutput');
+    const tabC     = document.getElementById('mobileTabContenu');
+    const tabO     = document.getElementById('mobileTabRendu');
+    if (!btnMenu || !sidebar || !overlay) return;
+
+    function openSidebar() {
+        sidebar.classList.add('mobile-open');
+        overlay.classList.add('mobile-open');
+    }
+    function closeSidebar() {
+        sidebar.classList.remove('mobile-open');
+        overlay.classList.remove('mobile-open');
+    }
+
+    btnMenu.addEventListener('click', openSidebar);
+    overlay.addEventListener('click', closeSidebar);
+
+    // Fermer la sidebar quand on sélectionne un élève (pratique sur mobile)
+    document.getElementById('eleveList').addEventListener('click', () => {
+        if (window.innerWidth <= 700) closeSidebar();
+    });
+
+    // Onglets Contenu / Rendu
+    function showTab(which) {
+        if (which === 'rendu') {
+            colC.classList.add('mobile-hidden');
+            colO.classList.add('mobile-active');
+            tabC.classList.remove('active');
+            tabO.classList.add('active');
+        } else {
+            colC.classList.remove('mobile-hidden');
+            colO.classList.remove('mobile-active');
+            tabC.classList.add('active');
+            tabO.classList.remove('active');
+        }
+    }
+    tabC.addEventListener('click', () => showTab('contenu'));
+    tabO.addEventListener('click', () => showTab('rendu'));
+
+    // Quand un élève est sélectionné sur mobile, basculer automatiquement vers le Rendu
+    document.addEventListener('eleve-selected', () => {
+        if (window.innerWidth <= 700) showTab('rendu');
     });
 })();
 </script>
