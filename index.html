@@ -4621,6 +4621,15 @@ function closeModal(id) { document.getElementById(id)?.classList.add('hidden'); 
 function openModal(id)  { document.getElementById(id)?.classList.remove('hidden'); }
 
 // ── RÉINITIALISATION ─────────────────────────────────────────────────────────
+async function _resetAll() {
+    localStorage.clear();
+    // Supprimer aussi la base IndexedDB (sinon _restoreFromIDB() restaure tout)
+    await new Promise(res => {
+        const req = indexedDB.deleteDatabase('lecturePlus_v1');
+        req.onsuccess = req.onerror = req.onblocked = res;
+    });
+    location.reload();
+}
 document.getElementById('btnReinitialiser').addEventListener('click', () => {
     openModal('modalReinit');
 });
@@ -4630,13 +4639,11 @@ document.getElementById('btnReinitExporter').addEventListener('click', () => {
     if (state.eleves.length) {
         document.getElementById('btnExporter').click();
     } else {
-        localStorage.clear();
-        location.reload();
+        _resetAll();
     }
 });
 document.getElementById('btnReinitConfirm').addEventListener('click', () => {
-    localStorage.clear();
-    location.reload();
+    _resetAll();
 });
 document.getElementById('modalReinit').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeModal('modalReinit');
