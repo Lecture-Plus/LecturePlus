@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4f46e5"/>
+      <stop offset="100%" style="stop-color:#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.15"/>
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fond arrondi -->
+  <rect width="256" height="256" rx="52" ry="52" fill="url(#bg)"/>
+  <!-- Reflet -->
+  <rect width="256" height="128" rx="52" ry="52" fill="url(#shine)"/>
+
+  <!-- Lignes de texte stylisées (évoque un livre / texte) -->
+  <rect x="44" y="74" width="90" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+  <rect x="44" y="96" width="120" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+  <rect x="44" y="118" width="100" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+
+  <!-- Lettre L -->
+  <text x="38" y="210" font-family="'Georgia', serif" font-weight="700" font-size="108" fill="#ffffff" letter-spacing="-4">L</text>
+
+  <!-- + en accent violet clair -->
+  <text x="138" y="210" font-family="'Georgia', serif" font-weight="300" font-size="108" fill="#c4b5fd" letter-spacing="0">+</text>
+</svg>

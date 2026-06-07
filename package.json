@@ -1,0 +1,53 @@
+{
+  "name": "lecture-plus",
+  "version": "1.0.0",
+  "description": "Outil pédagogique de lecture",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "dist-portable": "node build-portable.js"
+  },
+  "build": {
+    "appId": "fr.lecture-plus",
+    "productName": "Lecture+",
+    "asar": false,
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "installerLanguages": [
+        "fr"
+      ],
+      "language": "1036"
+    },
+    "files": [
+      "electron-main.js",
+      "server.js",
+      "index.html",
+      "phonetic_engine.js",
+      "phonetic_worker.js",
+      "assets/**"
+    ]
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^6.20.0",
+    "electron": "^35.0.0",
+    "electron-builder": "^25.0.0",
+    "sharp": "^0.34.5"
+  }
+}
