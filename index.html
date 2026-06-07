@@ -1063,21 +1063,26 @@
                 pointer-events: auto;
             }
             .col-divider { display: none; }
-            /* Colonne Contenu : padding réduit + overflow visible pour que le zoom
-               de .input-area ne soit pas clipé par le conteneur */
-            .col-content { padding: 8px 8px 8px 8px; overflow: visible; }
-            /* .input-area : transform-origin top left pour que le zoom parte
-               du coin haut-gauche (identique à output-box) */
-            #colContent .input-area { transform-origin: top left; overflow: visible; }
-            /* Barre de mise en forme : une seule ligne, scroll horizontal invisible */
+            /* Colonne Contenu : overflow:hidden pour clipper le débordement horizontal.
+               La col-content est déjà pleine largeur (left:0 right:0) — pas besoin de zoom. */
+            .col-content { padding: 8px; overflow: hidden; }
+            /* .input-area : min-width:0 empêche le flex-item d'imposer sa largeur au parent.
+               overflow:hidden clippe le débordement sans casser le scroll vertical interne. */
+            #colContent .input-area { min-width: 0; overflow: hidden; }
+            /* Barre de formatage : min-width:0 + width:100% = tient dans le conteneur.
+               overflow-x:auto = tous les boutons accessibles par scroll horizontal. */
             .output-fmt-bar {
+                min-width: 0; width: 100%;
                 flex-wrap: nowrap;
                 overflow-x: auto; overflow-y: visible;
                 -webkit-overflow-scrolling: touch;
                 padding-bottom: 6px;
-                scrollbar-width: none;  /* Firefox */
+                scrollbar-width: none;
             }
             .output-fmt-bar::-webkit-scrollbar { display: none; }
+            /* bloc-editor et ses items : min-width:0 pour rester dans le conteneur */
+            .bloc-editor { min-width: 0; }
+            .bloc-item   { min-width: 0; }
             /* Rendu : pas de scroll horizontal (l'output-box est zoomé par JS) */
             .output-scroll-wrap {
                 overflow-x: hidden;
@@ -5770,12 +5775,14 @@ runDailyBackup();   // sauvegarde journalière (silencieuse, une fois par jour)
     });
 
     // ── Zoom de l'output-box sur mobile pour tenir dans la largeur d'écran ──────
+    // L'output-box fait 794px (simulation A4). On la scale via `element.style.zoom`
+    // (affecte le layout, contrairement à transform:scale).
+    // La col-content est déjà pleine largeur (left:0 right:0) → pas de zoom nécessaire.
     function _updateOutputZoom() {
         const box  = document.querySelector('.output-box');
         if (!box) return;
         if (window.innerWidth > 700) {
             box.style.zoom = '';
-            box.style.transformOrigin = '';
             return;
         }
         const wrap = document.querySelector('.output-scroll-wrap');
@@ -5784,29 +5791,11 @@ runDailyBackup();   // sauvegarde journalière (silencieuse, une fois par jour)
         box.style.zoom = z;
     }
 
-    // ── Zoom de la zone Contenu sur mobile ────────────────────────────────────
-    // La col-content est en position:absolute left:0 right:0 (donc pleine largeur écran)
-    // mais son contenu interne est conçu pour ~672px (desktop). On zoom .input-area
-    // de la même façon que .output-box, en calculant le facteur depuis la largeur réelle
-    // de la col-content.
-    function _updateContentZoom() {
-        const area = document.querySelector('#colContent .input-area');
-        if (!area) return;
-        if (window.innerWidth > 700) {
-            area.style.zoom = '';
-            return;
-        }
-        const col = document.getElementById('colContent');
-        const available = col ? (col.clientWidth - 24) : (window.innerWidth - 24);
-        const z = Math.min(1, available / 672);
-        area.style.zoom = z;
-    }
-
     // Appliquer au chargement (après rendu initial)
-    setTimeout(() => { _updateOutputZoom(); _updateContentZoom(); }, 100);
-    window.addEventListener('resize', () => { _updateOutputZoom(); _updateContentZoom(); });
+    setTimeout(_updateOutputZoom, 100);
+    window.addEventListener('resize', _updateOutputZoom);
     // Ré-appliquer après chaque rendu (le contenu peut changer)
-    document.addEventListener('lp-rendered', () => { _updateOutputZoom(); _updateContentZoom(); });
+    document.addEventListener('lp-rendered', _updateOutputZoom);
 })();
 </script>
 
