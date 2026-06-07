@@ -1257,7 +1257,7 @@
                             <span class="dot"></span>
                             <span id="outputBadgeName"></span>
                         </div>
-                        <button class="btn btn-ghost btn-sm" id="btnPreviewPdf" style="margin-left:auto;font-size:.75rem" title="Prévisualiser le rendu PDF">👁 Prévisualiser PDF</button>
+                        <button class="btn btn-ghost btn-sm" id="btnPreviewPdf" style="display:none;margin-left:auto;font-size:.75rem" title="Prévisualiser le rendu PDF">👁 Prévisualiser PDF</button>
                     </div>
                     <!-- Barre de réglages visuels du rendu -->
                     <div class="render-fmt-bar">
@@ -1938,6 +1938,7 @@ async function _pickSaveFile() {
         });
         await _idb.set(SK_FILE_HANDLE, _fileHandle);
         await _writeToFile();
+        localStorage.setItem('_lp_fileConfigured', '1'); // marqueur persistant
         _renderSaveBanner();
     } catch(e) { if (e.name !== 'AbortError') console.warn('[FileSave] pick:', e); }
 }
@@ -1945,8 +1946,10 @@ async function _pickSaveFile() {
 function _renderSaveBanner() {
     const hasApi = typeof window.showSaveFilePicker === 'function';
     const existing = document.getElementById('_lp_saveBanner');
-    // Cacher si API absente (Firefox) ou fichier déjà configuré
-    if (!hasApi || _fileHandle) { existing?.remove(); return; }
+    // Cacher si : API absente, fichier actif, ou déjà configuré (marqueur localStorage)
+    if (!hasApi || _fileHandle || localStorage.getItem('_lp_fileConfigured')) {
+        existing?.remove(); return;
+    }
     if (existing) return; // déjà affichée
     const banner = document.createElement('div');
     banner.id = '_lp_saveBanner';
@@ -4966,10 +4969,9 @@ function _fixCanvasPageBreaks(doc, pageH, margin) {
                 const bot = top + el.offsetHeight;
                 // Ignorer les éléments plus grands qu'une page (rien à faire)
                 if (bot - top >= pageH - 2 * margin) continue;
-                if (top < boundY && bot > boundY) {
-                    // Cet élément chevauche la limite de page p.
-                    // On insère un espaceur block juste avant lui pour le pousser
-                    // au début du contenu de la page p+1 (= boundY + margin).
+                if (top < boundY && bot > (boundY - margin)) {
+                    // Cet élément croise la limite OU y est trop proche par le bas.
+                    // On le pousse au début du contenu de la page suivante (boundY + margin).
                     const spacerH = Math.ceil(boundY + margin - top);
                     const sp = doc.createElement('div');
                     sp.style.cssText = 'height:' + spacerH + 'px;display:block;clear:both;';
